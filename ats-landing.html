@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ATS Report AI — วิเคราะห์ข้อมูล Manufacturing ด้วย AI</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root {
+    --bg: #080b0f;
+    --panel: #0e1219;
+    --border: #1a2332;
+    --accent: #00d4ff;
+    --accent2: #00ff88;
+    --warn: #ffcc00;
+    --red: #ff3b5c;
+    --text: #c8d4e0;
+    --muted: #4a5a6e;
+    --white: #f0f4f8;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    overflow-x: hidden;
+  }
+
+  /* ── GRID LINES BG ── */
+  body::before {
+    content:'';
+    position:fixed; inset:0; z-index:0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events:none;
+  }
+
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* ── NAV ── */
+  nav {
+    position: sticky; top:0; z-index:100;
+    background: rgba(8,11,15,0.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 56px;
+    display: flex; align-items:center; justify-content:space-between;
+  }
+  .nav-logo {
+    display:flex; align-items:center; gap:10px;
+  }
+  .nav-dot {
+    width:8px; height:8px; border-radius:50%;
+    background:var(--accent);
+    box-shadow: 0 0 12px var(--accent);
+    animation: blink 2s infinite;
+  }
+  .nav-brand { font-size:14px; font-weight:700; color:var(--white); letter-spacing:0.5px; }
+  .nav-cta {
+    background: var(--accent); color:#000;
+    border:none; padding:7px 18px; border-radius:4px;
+    font-size:12px; font-weight:700; letter-spacing:1px;
+    cursor:pointer; font-family:'Space Grotesk',sans-serif;
+    text-decoration:none; display:inline-block;
+    transition: all 0.2s;
+  }
+  .nav-cta:hover { box-shadow: 0 0 20px var(--accent)66; transform:translateY(-1px); }
+
+  /* ── HERO ── */
+  .hero {
+    position:relative; z-index:1;
+    padding: 80px 24px 60px;
+    text-align: center;
+    max-width: 700px; margin: 0 auto;
+  }
+  .hero-eyebrow {
+    display:inline-flex; align-items:center; gap:8px;
+    background: rgba(0,212,255,0.08);
+    border: 1px solid rgba(0,212,255,0.2);
+    padding: 5px 14px; border-radius:100px;
+    font-size:11px; font-weight:500; color:var(--accent);
+    letter-spacing:2px; margin-bottom:24px;
+    font-family:'JetBrains Mono',monospace;
+  }
+  .hero h1 {
+    font-size: clamp(32px, 8vw, 52px);
+    font-weight: 700; line-height: 1.1;
+    color: var(--white);
+    margin-bottom: 20px;
+    letter-spacing: -1px;
+  }
+  .hero h1 span {
+    color: var(--accent);
+    text-shadow: 0 0 30px rgba(0,212,255,0.4);
+  }
+  .hero-sub {
+    font-size: 16px; line-height: 1.7;
+    color: var(--muted); margin-bottom: 36px;
+    max-width: 500px; margin-left:auto; margin-right:auto;
+  }
+  .hero-actions {
+    display:flex; gap:12px; justify-content:center; flex-wrap:wrap;
+  }
+  .btn-primary {
+    background: var(--accent); color:#000;
+    padding: 13px 28px; border-radius:5px;
+    font-size:14px; font-weight:700; letter-spacing:1px;
+    text-decoration:none; display:inline-block;
+    transition: all 0.2s; border:none; cursor:pointer;
+    font-family:'Space Grotesk',sans-serif;
+    box-shadow: 0 0 24px rgba(0,212,255,0.3);
+  }
+  .btn-primary:hover { transform:translateY(-2px); box-shadow: 0 0 36px rgba(0,212,255,0.5); }
+  .btn-outline {
+    background: transparent; color:var(--accent);
+    padding: 13px 28px; border-radius:5px;
+    font-size:14px; font-weight:600; letter-spacing:1px;
+    text-decoration:none; display:inline-block;
+    border: 1px solid rgba(0,212,255,0.3);
+    transition: all 0.2s; cursor:pointer;
+    font-family:'Space Grotesk',sans-serif;
+  }
+  .btn-outline:hover { border-color:var(--accent); background:rgba(0,212,255,0.06); }
+
+  /* ── LIVE DEMO TERMINAL ── */
+  .terminal-wrap {
+    position:relative; z-index:1;
+    max-width:680px; margin:0 auto 80px;
+    padding:0 24px;
+  }
+  .terminal {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 0 60px rgba(0,212,255,0.08), 0 40px 80px rgba(0,0,0,0.4);
+  }
+  .terminal-bar {
+    background: #0a0d12; padding: 10px 16px;
+    display:flex; align-items:center; gap:8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .t-dot { width:10px;height:10px;border-radius:50%; }
+  .terminal-title {
+    flex:1; text-align:center;
+    font-size:10px; color:var(--muted);
+    font-family:'JetBrains Mono',monospace; letter-spacing:1px;
+  }
+  .terminal-body { padding:20px; }
+  .t-line { font-family:'JetBrains Mono',monospace; font-size:11px; line-height:2; }
+  .t-prompt { color:var(--accent2); }
+  .t-cmd { color:var(--white); }
+  .t-out { color:var(--muted); }
+  .t-val { color:var(--accent); font-weight:700; }
+  .t-warn { color:var(--warn); }
+  .t-ok { color:var(--accent2); }
+  .t-err { color:var(--red); }
+  .t-cursor { display:inline-block; width:8px; height:14px; background:var(--accent); animation:blink 1s infinite; vertical-align:middle; margin-left:2px; }
+
+  /* ── METRICS STRIP ── */
+  .metrics {
+    position:relative; z-index:1;
+    border-top:1px solid var(--border); border-bottom:1px solid var(--border);
+    padding:28px 24px; margin-bottom:80px;
+    display:flex; justify-content:center; gap:0; flex-wrap:wrap;
+  }
+  .metric-item {
+    flex:1; min-width:140px; max-width:200px;
+    text-align:center; padding:16px 20px;
+    border-right:1px solid var(--border);
+  }
+  .metric-item:last-child { border-right:none; }
+  .metric-num {
+    font-size:36px; font-weight:700;
+    font-family:'JetBrains Mono',monospace;
+    color:var(--accent); line-height:1;
+    margin-bottom:6px;
+    text-shadow: 0 0 20px rgba(0,212,255,0.3);
+  }
+  .metric-label { font-size:11px; color:var(--muted); letter-spacing:1px; }
+
+  /* ── SECTIONS ── */
+  section {
+    position:relative; z-index:1;
+    max-width:700px; margin:0 auto 80px;
+    padding:0 24px;
+  }
+  .section-tag {
+    font-size:10px; letter-spacing:3px; color:var(--accent);
+    font-family:'JetBrains Mono',monospace;
+    margin-bottom:14px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .section-tag::before { content:''; display:block; width:20px; height:1px; background:var(--accent); }
+  h2 {
+    font-size:clamp(22px,5vw,32px); font-weight:700;
+    color:var(--white); line-height:1.25; margin-bottom:14px; letter-spacing:-0.5px;
+  }
+  .section-sub {
+    font-size:15px; color:var(--muted); line-height:1.7; margin-bottom:36px;
+  }
+
+  /* ── FEATURE GRID ── */
+  .feature-grid { display:grid; grid-template-columns:1fr; gap:12px; }
+  .feature-card {
+    background:var(--panel); border:1px solid var(--border);
+    border-radius:8px; padding:20px;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .feature-card:hover { border-color:rgba(0,212,255,0.3); transform:translateY(-2px); }
+  .feature-icon { font-size:24px; margin-bottom:10px; }
+  .feature-title { font-size:14px; font-weight:600; color:var(--white); margin-bottom:6px; }
+  .feature-desc { font-size:13px; color:var(--muted); line-height:1.6; }
+  .feature-tag {
+    display:inline-block; margin-top:10px;
+    font-size:9px; letter-spacing:2px; padding:3px 8px;
+    border-radius:2px; font-family:'JetBrains Mono',monospace; font-weight:500;
+  }
+  .tag-new { background:rgba(0,255,136,0.1); color:var(--accent2); border:1px solid rgba(0,255,136,0.2); }
+  .tag-ai { background:rgba(0,212,255,0.1); color:var(--accent); border:1px solid rgba(0,212,255,0.2); }
+
+  /* ── HOW IT WORKS ── */
+  .steps { display:flex; flex-direction:column; gap:0; }
+  .step {
+    display:flex; gap:20px; padding:20px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .step:last-child { border-bottom:none; }
+  .step-num {
+    width:36px; height:36px; border-radius:50%; flex-shrink:0;
+    background:rgba(0,212,255,0.1); border:1px solid rgba(0,212,255,0.3);
+    display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:700; color:var(--accent);
+    font-family:'JetBrains Mono',monospace;
+  }
+  .step-content { flex:1; }
+  .step-title { font-size:14px; font-weight:600; color:var(--white); margin-bottom:5px; }
+  .step-desc { font-size:13px; color:var(--muted); line-height:1.6; }
+
+  /* ── PRICING ── */
+  .pricing-grid { display:grid; grid-template-columns:1fr; gap:12px; }
+  .price-card {
+    background:var(--panel); border:1px solid var(--border);
+    border-radius:8px; padding:22px; position:relative;
+  }
+  .price-card.featured {
+    border-color:rgba(0,212,255,0.4);
+    box-shadow: 0 0 30px rgba(0,212,255,0.08);
+  }
+  .price-badge {
+    position:absolute; top:-10px; left:50%; transform:translateX(-50%);
+    background:var(--accent); color:#000;
+    font-size:9px; font-weight:700; letter-spacing:2px;
+    padding:3px 12px; border-radius:100px;
+    font-family:'JetBrains Mono',monospace;
+    white-space:nowrap;
+  }
+  .price-plan { font-size:11px; letter-spacing:2px; color:var(--muted); margin-bottom:8px; font-family:'JetBrains Mono',monospace; }
+  .price-amount { font-size:32px; font-weight:700; color:var(--white); font-family:'JetBrains Mono',monospace; }
+  .price-unit { font-size:12px; color:var(--muted); }
+  .price-features { margin-top:16px; display:flex; flex-direction:column; gap:7px; }
+  .pf { font-size:12px; color:var(--text); display:flex; gap:8px; align-items:flex-start; line-height:1.4; }
+  .pf-check { color:var(--accent2); flex-shrink:0; margin-top:1px; }
+  .pf-muted { color:var(--muted); }
+
+  /* ── ROADMAP LINKS ── */
+  .links-grid { display:flex; flex-direction:column; gap:8px; }
+  .link-group-title {
+    font-size:9px; letter-spacing:3px; color:var(--muted);
+    font-family:'JetBrains Mono',monospace;
+    padding:14px 0 6px; border-top:1px solid var(--border);
+    margin-top:8px;
+  }
+  .link-group-title:first-child { border-top:none; margin-top:0; padding-top:0; }
+  .link-card {
+    background:var(--panel); border:1px solid var(--border);
+    border-radius:6px; padding:14px 16px;
+    display:flex; align-items:center; gap:14px;
+    text-decoration:none; transition:all 0.15s;
+  }
+  .link-card:hover { border-color:rgba(0,212,255,0.3); background:#131820; transform:translateX(4px); }
+  .link-icon { font-size:20px; flex-shrink:0; width:28px; text-align:center; }
+  .link-info { flex:1; min-width:0; }
+  .link-name { font-size:13px; font-weight:600; color:var(--white); margin-bottom:2px; }
+  .link-desc { font-size:11px; color:var(--muted); }
+  .link-url { font-size:10px; color:var(--accent); font-family:'JetBrains Mono',monospace; flex-shrink:0; }
+  .link-free { font-size:9px; padding:2px 7px; border-radius:2px; background:rgba(0,255,136,0.1); color:var(--accent2); border:1px solid rgba(0,255,136,0.2); font-family:'JetBrains Mono',monospace; letter-spacing:1px; flex-shrink:0; }
+  .link-paid { font-size:9px; padding:2px 7px; border-radius:2px; background:rgba(255,204,0,0.1); color:var(--warn); border:1px solid rgba(255,204,0,0.2); font-family:'JetBrains Mono',monospace; letter-spacing:1px; flex-shrink:0; }
+
+  /* ── CTA SECTION ── */
+  .cta-section {
+    position:relative; z-index:1;
+    text-align:center; padding:60px 24px 80px;
+    border-top:1px solid var(--border);
+  }
+  .cta-section h2 { margin-bottom:12px; }
+  .cta-section p { color:var(--muted); margin-bottom:28px; font-size:15px; }
+
+  /* ── FOOTER ── */
+  footer {
+    position:relative; z-index:1;
+    border-top:1px solid var(--border);
+    padding:20px 24px;
+    text-align:center;
+    font-size:11px; color:var(--muted);
+    font-family:'JetBrains Mono',monospace; letter-spacing:1px;
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+  .hero { animation: fadeUp 0.6s ease both; }
+  .terminal-wrap { animation: fadeUp 0.6s 0.2s ease both; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    <div class="nav-dot"></div>
+    <span class="nav-brand">ATS Report AI</span>
+  </div>
+  <a href="#try" class="nav-cta">ทดลองใช้ฟรี</a>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-eyebrow">🏭 MANUFACTURING AI PLATFORM</div>
+  <h1>วิเคราะห์ข้อมูล ATS<br/>ด้วย <span>AI ภายใน 30 วินาที</span></h1>
+  <p class="hero-sub">
+    อัปโหลด Excel หรือ CSV จากสาย production — AI สรุป FPY, หา failure pattern
+    และให้ recommendations พร้อม export รายงานได้เลย
+  </p>
+  <div class="hero-actions">
+    <a href="#try" class="btn-primary">▶ ทดลองใช้ฟรี 14 วัน</a>
+    <a href="#how" class="btn-outline">ดูวิธีใช้งาน</a>
+  </div>
+</div>
+
+<!-- TERMINAL DEMO -->
+<div class="terminal-wrap" id="try">
+  <div class="terminal">
+    <div class="terminal-bar">
+      <div class="t-dot" style="background:#ff5f57"></div>
+      <div class="t-dot" style="background:#ffbd2e"></div>
+      <div class="t-dot" style="background:#28ca41"></div>
+      <div class="terminal-title mono">ATS_REPORT_AI — LIVE DEMO</div>
+    </div>
+    <div class="terminal-body">
+      <div class="t-line"><span class="t-prompt">▸ </span><span class="t-cmd">loading file: production_data_jan.xlsx</span></div>
+      <div class="t-line"><span class="t-out">  rows detected: </span><span class="t-val">4,820</span><span class="t-out"> units</span></div>
+      <div class="t-line"><span class="t-out">  stations found: ST-01, ST-02, ST-03, ST-04</span></div>
+      <div class="t-line">&nbsp;</div>
+      <div class="t-line"><span class="t-prompt">▸ </span><span class="t-cmd">analyzing with AI...</span></div>
+      <div class="t-line"><span class="t-ok">  ✓ </span><span class="t-out">FPY calculated: </span><span class="t-val">87.3%</span><span class="t-warn"> ◆ BELOW TARGET (95%)</span></div>
+      <div class="t-line"><span class="t-ok">  ✓ </span><span class="t-out">top failure: </span><span class="t-err">VOLTAGE_CHECK</span><span class="t-out"> — 8.2% of total</span></div>
+      <div class="t-line"><span class="t-ok">  ✓ </span><span class="t-out">worst station: </span><span class="t-err">ST-02</span><span class="t-out"> (FPY 79.1%)</span></div>
+      <div class="t-line">&nbsp;</div>
+      <div class="t-line"><span class="t-prompt">▸ </span><span class="t-cmd">generating recommendations...</span></div>
+      <div class="t-line"><span class="t-ok">  → </span><span class="t-out">ตรวจสอบ fixture calibration ที่ ST-02 ทันที</span></div>
+      <div class="t-line"><span class="t-ok">  → </span><span class="t-out">เพิ่ม PM cycle ทุก 500 units สำหรับ voltage probe</span></div>
+      <div class="t-line">&nbsp;</div>
+      <div class="t-line"><span class="t-ok">  ✓ report exported: </span><span class="t-val">ATS_Report_Jan.xlsx</span><span class="t-cursor"></span></div>
+    </div>
+  </div>
+</div>
+
+<!-- METRICS -->
+<div class="metrics">
+  <div class="metric-item">
+    <div class="metric-num">30<span style="font-size:20px">s</span></div>
+    <div class="metric-label">เวลาวิเคราะห์</div>
+  </div>
+  <div class="metric-item">
+    <div class="metric-num">100%</div>
+    <div class="metric-label">Thai Language</div>
+  </div>
+  <div class="metric-item">
+    <div class="metric-num">4</div>
+    <div class="metric-label">Export Sheets</div>
+  </div>
+  <div class="metric-item">
+    <div class="metric-num">3</div>
+    <div class="metric-label">User Roles</div>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<section>
+  <div class="section-tag">FEATURES</div>
+  <h2>ครบทุกอย่างที่ Engineer ต้องการ</h2>
+  <p class="section-sub">ออกแบบมาสำหรับโรงงานอิเล็กทรอนิกส์ไทยโดยเฉพาะ ไม่ต้องเขียนโค้ด</p>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="feature-icon">📂</div>
+      <div class="feature-title">รองรับ Excel & CSV โดยตรง</div>
+      <div class="feature-desc">ลากวางไฟล์ได้เลย รองรับ .xlsx, .xls, .csv พร้อม Column Mapper ถ้า header ชื่อไม่ตรง standard</div>
+      <span class="feature-tag tag-new">DRAG & DROP</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🤖</div>
+      <div class="feature-title">AI วิเคราะห์ Failure Pattern</div>
+      <div class="feature-desc">ระบุ root cause, จัดอันดับ failure mode, เปรียบเทียบ station performance และให้ recommendations เป็นภาษาไทย</div>
+      <span class="feature-tag tag-ai">POWERED BY AI</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📊</div>
+      <div class="feature-title">Export รายงาน Excel 4 Sheet</div>
+      <div class="feature-desc">Summary, Top Failures, Station Performance, AI Analysis — พร้อมชื่อโรงงานและผู้วิเคราะห์ในทุก report</div>
+      <span class="feature-tag tag-new">AUTO REPORT</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🏭</div>
+      <div class="feature-title">Custom Branding ต่อโรงงาน</div>
+      <div class="feature-desc">ใส่ชื่อโรงงาน, logo, สีหลัก และชื่อ plant ได้เอง รายงานที่ออกมาจะมีหน้าตาเป็นของโรงงานคุณ</div>
+      <span class="feature-tag tag-new">WHITE LABEL</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔐</div>
+      <div class="feature-title">ระบบ Login 3 ระดับ</div>
+      <div class="feature-desc">Admin จัดการ settings / Engineer วิเคราะห์ข้อมูล / Viewer ดูรายงาน — แต่ละ role เห็นฟีเจอร์ต่างกัน</div>
+      <span class="feature-tag tag-ai">ROLE-BASED</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🕒</div>
+      <div class="feature-title">ประวัติวิเคราะห์ข้ามวัน</div>
+      <div class="feature-desc">บันทึกผลวิเคราะห์ทุกครั้งพร้อม timestamp และชื่อผู้วิเคราะห์ เรียกดูและเปรียบเทียบย้อนหลังได้</div>
+      <span class="feature-tag tag-new">PERSISTENT</span>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="section-tag">HOW IT WORKS</div>
+  <h2>3 ขั้นตอน จาก Raw Data สู่ Report</h2>
+  <p class="section-sub">ไม่ต้องเขียน SQL ไม่ต้องทำ pivot table เอง</p>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title">อัปโหลดไฟล์</div>
+        <div class="step-desc">ลากวางไฟล์ Excel หรือ CSV จาก ATS system โดยตรง ไม่ต้องแปลงรูปแบบ ถ้า column ชื่อไม่ตรง ระบบจะให้ map เองได้</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title">AI วิเคราะห์อัตโนมัติ</div>
+        <div class="step-desc">กด Analyze — AI คำนวณ FPY, หา failure pattern, เปรียบเทียบ station และสร้าง recommendations ภายใน 30 วินาที</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <div class="step-title">Export & แชร์</div>
+        <div class="step-desc">กด Export เพื่อดาวน์โหลด Excel report ที่มีชื่อโรงงานของคุณ พร้อมส่งให้หัวหน้าหรือทีม QC ได้เลย</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section>
+  <div class="section-tag">PRICING</div>
+  <h2>ราคาเริ่มต้นที่คุ้มค่า</h2>
+  <p class="section-sub">ประหยัดเวลาวิเคราะห์ได้ 2-3 ชั่วโมงต่อวัน คุ้มค่ากว่าค่า subscription มาก</p>
+  <div class="pricing-grid">
+    <div class="price-card">
+      <div class="price-plan">FREE TRIAL</div>
+      <div class="price-amount">฿0 <span class="price-unit">/ 14 วัน</span></div>
+      <div class="price-features">
+        <div class="pf"><span class="pf-check">✓</span> ฟีเจอร์ครบทุกอย่าง</div>
+        <div class="pf"><span class="pf-check">✓</span> 1 user</div>
+        <div class="pf"><span class="pf-check">✓</span> 20 analyses</div>
+        <div class="pf"><span class="pf-check pf-muted">✗</span> <span class="pf-muted">Custom branding</span></div>
+      </div>
+    </div>
+    <div class="price-card featured">
+      <div class="price-badge">แนะนำ</div>
+      <div class="price-plan">PRO TEAM</div>
+      <div class="price-amount">฿1,490 <span class="price-unit">/ เดือน</span></div>
+      <div class="price-features">
+        <div class="pf"><span class="pf-check">✓</span> ทุกอย่างใน Free</div>
+        <div class="pf"><span class="pf-check">✓</span> 5 users (Admin+Engineer+Viewer)</div>
+        <div class="pf"><span class="pf-check">✓</span> Unlimited analyses</div>
+        <div class="pf"><span class="pf-check">✓</span> Custom branding & logo</div>
+        <div class="pf"><span class="pf-check">✓</span> ประวัติ 90 วัน</div>
+      </div>
+    </div>
+    <div class="price-card">
+      <div class="price-plan">ENTERPRISE</div>
+      <div class="price-amount" style="font-size:22px;padding-top:5px">ต่อรองได้</div>
+      <div class="price-features">
+        <div class="pf"><span class="pf-check">✓</span> ทุกอย่างใน Pro</div>
+        <div class="pf"><span class="pf-check">✓</span> Unlimited users</div>
+        <div class="pf"><span class="pf-check">✓</span> On-premise / private deploy</div>
+        <div class="pf"><span class="pf-check">✓</span> Custom features ตามโรงงาน</div>
+        <div class="pf"><span class="pf-check">✓</span> SLA & support</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ROADMAP LINKS -->
+<section>
+  <div class="section-tag">LAUNCH TOOLKIT</div>
+  <h2>ลิงก์ที่ต้องใช้ในการ Launch</h2>
+  <p class="section-sub">รวบรวมทุก tool ที่จำเป็นสำหรับแผน Deploy → Sell → Scale</p>
+
+  <div class="links-grid">
+
+    <div class="link-group-title">🚀 PHASE 1 — DEPLOY (อาทิตย์ที่ 1-2)</div>
+
+    <a href="https://vercel.com" target="_blank" class="link-card">
+      <div class="link-icon">▲</div>
+      <div class="link-info">
+        <div class="link-name">Vercel</div>
+        <div class="link-desc">Deploy React app ขึ้น internet — ง่ายที่สุด เชื่อม GitHub แล้ว auto-deploy</div>
+      </div>
+      <span class="link-free">FREE</span>
+    </a>
+
+    <a href="https://supabase.com" target="_blank" class="link-card">
+      <div class="link-icon">⚡</div>
+      <div class="link-info">
+        <div class="link-name">Supabase</div>
+        <div class="link-desc">Database + Auth + Edge Functions — แทน hardcode password ด้วย login จริง</div>
+      </div>
+      <span class="link-free">FREE</span>
+    </a>
+
+    <a href="https://github.com" target="_blank" class="link-card">
+      <div class="link-icon">🐙</div>
+      <div class="link-info">
+        <div class="link-name">GitHub</div>
+        <div class="link-desc">เก็บ source code และเชื่อมกับ Vercel สำหรับ auto-deploy ทุกครั้งที่ push</div>
+      </div>
+      <span class="link-free">FREE</span>
+    </a>
+
+    <a href="https://www.namecheap.com" target="_blank" class="link-card">
+      <div class="link-icon">🌐</div>
+      <div class="link-info">
+        <div class="link-name">Namecheap</div>
+        <div class="link-desc">ซื้อ domain เช่น atsreport.ai หรือ atsai.th — ราคาประมาณ 400-800 บาท/ปี</div>
+      </div>
+      <span class="link-paid">~฿400/yr</span>
+    </a>
+
+    <div class="link-group-title">💳 PHASE 2 — PAYMENT (อาทิตย์ที่ 3-4)</div>
+
+    <a href="https://stripe.com" target="_blank" class="link-card">
+      <div class="link-icon">💳</div>
+      <div class="link-info">
+        <div class="link-name">Stripe</div>
+        <div class="link-desc">รับชำระเงิน subscription รายเดือน รองรับบัตรเครดิต ค่าธรรมเนียม 2.9% + $0.30</div>
+      </div>
+      <span class="link-free">PAY/USE</span>
+    </a>
+
+    <a href="https://www.gbprimepay.com" target="_blank" class="link-card">
+      <div class="link-icon">🏦</div>
+      <div class="link-info">
+        <div class="link-name">GB Prime Pay</div>
+        <div class="link-desc">Payment gateway ไทย รองรับ PromptPay, QR Code, บัตรเครดิต เหมาะลูกค้าโรงงาน</div>
+      </div>
+      <span class="link-paid">ค่า setup</span>
+    </a>
+
+    <div class="link-group-title">📣 PHASE 3 — MARKETING (เดือนที่ 2+)</div>
+
+    <a href="https://www.linkedin.com" target="_blank" class="link-card">
+      <div class="link-icon">💼</div>
+      <div class="link-info">
+        <div class="link-name">LinkedIn</div>
+        <div class="link-desc">โพสต์ demo video + before/after เพื่อเข้าถึง Engineering Manager และ QC Head ในนิคม</div>
+      </div>
+      <span class="link-free">FREE</span>
+    </a>
+
+    <a href="https://www.facebook.com/groups/iethailand" target="_blank" class="link-card">
+      <div class="link-icon">👥</div>
+      <div class="link-info">
+        <div class="link-name">กลุ่ม IE & วิศวกรไทย (Facebook)</div>
+        <div class="link-desc">กลุ่มวิศวกรอุตสาหการไทย มีสมาชิกกว่า 50,000+ คน เหมาะโพสต์ทดลองใช้ฟรี</div>
+      </div>
+      <span class="link-free">FREE</span>
+    </a>
+
+    <a href="https://www.fastwork.co" target="_blank" class="link-card">
+      <div class="link-icon">⚡</div>
+      <div class="link-info">
+        <div class="link-name">Fastwork</div>
+        <div class="link-desc">Marketplace freelance ไทย ขาย package วิเคราะห์ข้อมูลให้โรงงาน — ช่วยหาลูกค้าแรก</div>
+      </div>
+      <span class="link-free">FREE</span>
+    </a>
+
+    <div class="link-group-title">🛠 TOOLS เสริม</div>
+
+    <a href="https://www.notion.so" target="_blank" class="link-card">
+      <div class="link-icon">📋</div>
+      <div class="link-info">
+        <div class="link-name">Notion</div>
+        <div class="link-desc">ทำ roadmap, จัดการ customer list, เขียน SOP และเก็บ feedback จากลูกค้า</div>
+      </div>
+      <span class="link-free">FREE</span>
+    </a>
+
+    <a href="https://cursor.sh" target="_blank" class="link-card">
+      <div class="link-icon">🖱️</div>
+      <div class="link-info">
+        <div class="link-name">Cursor</div>
+        <div class="link-desc">AI code editor — ช่วย develop ต่อจาก prototype นี้โดยไม่ต้องเก่ง code มาก</div>
+      </div>
+      <span class="link-paid">฿700/mo</span>
+    </a>
+
+    <a href="https://claude.ai" target="_blank" class="link-card">
+      <div class="link-icon">🤖</div>
+      <div class="link-info">
+        <div class="link-name">Claude (Anthropic)</div>
+        <div class="link-desc">AI engine ที่ขับเคลื่อน tool นี้ ใช้สำหรับ develop, copywrite, และ pitch deck ด้วย</div>
+      </div>
+      <span class="link-free">FREE+</span>
+    </a>
+
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-section">
+  <div class="section-tag" style="justify-content:center">GET STARTED</div>
+  <h2>พร้อม Launch แล้วหรือยัง?</h2>
+  <p>เริ่มจาก prototype ที่มีอยู่ → Deploy → หาลูกค้ากลุ่มแรก<br/>ทุกอย่างทำได้ใน 30 วัน</p>
+  <div class="hero-actions">
+    <a href="#try" class="btn-primary">▶ เริ่มทดลองใช้ฟรี</a>
+    <a href="#" class="btn-outline">📩 ติดต่อขอ Demo</a>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  ATS REPORT AI · MANUFACTURING INTELLIGENCE PLATFORM · MADE IN THAILAND 🇹🇭
+</footer>
+
+</body>
+</html>
